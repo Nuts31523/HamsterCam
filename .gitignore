@@ -1,0 +1,8 @@
+.idea/
+.runtime/
+.venv*/
+__pycache__/
+build/
+dist/
+*.pyc
+/assets/hamsters/*.png

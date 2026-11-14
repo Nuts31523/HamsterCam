@@ -1,0 +1,1 @@
+"""HamsterCam desktop application."""
