@@ -18,7 +18,7 @@ from .camera import Device, list_devices
 from .dialogs import CollectionDialog, PriorityDialog
 from .pipeline import MAX_FRAME_AGE, Pipeline
 from .settings import BACKGROUNDS, COLLECTION_DIR, DATA_DIR, EXPRESSIONS, load_settings, save_settings
-from .ui_widgets import Preview, app_icon, card, combo, label, qimage, separator
+from .ui_widgets import Preview, card, combo, label, qimage, separator
 
 
 class Window(QMainWindow):
@@ -27,7 +27,6 @@ class Window(QMainWindow):
         self.setWindowTitle("HamsterCam")
         self.resize(1110, 770)
         self.setMinimumSize(820, 600)
-        self.setWindowIcon(app_icon())
         self.settings = load_settings()
         self.collection = Collection(COLLECTION_DIR)
         self.images, self.invalid_images = self.collection.load()
@@ -104,7 +103,8 @@ class Window(QMainWindow):
         self.tray_button.setVisible(self.tray is not None)
         self.shortcuts = []
         for number, name in enumerate(EXPRESSIONS, 1):
-            shortcut = QShortcut(QKeySequence(f"Ctrl+{number % 10}"), self)
+            keys = "Ctrl+Shift+1" if name == "thinking" else f"Ctrl+{number % 10}"
+            shortcut = QShortcut(QKeySequence(keys), self)
             shortcut.activated.connect(lambda key=name: self.pick_manual(key))
             self.shortcuts.append(shortcut)
         self.save_timer = QTimer(self, interval=300, singleShot=True)
@@ -187,7 +187,7 @@ class Window(QMainWindow):
         self.manual = combo(EXPRESSIONS, self.settings.manual_expression)
         self.manual.setEnabled(not self.settings.auto)
         self.manual.currentIndexChanged.connect(lambda: self.change(manual_expression=self.manual.currentData()))
-        self.manual.setToolTip("Ручной выбор · Ctrl+1–9, Ctrl+0")
+        self.manual.setToolTip("Ручной выбор · Ctrl+1–9, Ctrl+0, Ctrl+Shift+1")
         controls.addWidget(self.manual)
         self.slider(controls, "Чувствительность", "sensitivity")
         self.slider(controls, "Сглаживание", "smoothing")

@@ -17,9 +17,10 @@ EXPRESSIONS = {
     "smirk": "Ухмылка",
     "suspicious": "Поднятая бровь",
     "sleepy": "Закрытые глаза",
+    "thinking": "Задумчивость",
 }
 DEFAULT_PRIORITY = (
-    "laughing", "crying", "sleepy", "surprised", "angry",
+    "laughing", "crying", "sleepy", "surprised", "thinking", "angry",
     "suspicious", "smirk", "happy", "sad",
 )
 BACKGROUNDS = {
@@ -83,6 +84,10 @@ def load_settings(path: Path = SETTINGS_PATH) -> Settings:
             values.pop(name, None)
     priority = data.get("priority")
     if isinstance(priority, list) and all(isinstance(item, str) for item in priority):
+        if (len(priority) == len(DEFAULT_PRIORITY) - 1
+                and set(priority) == set(DEFAULT_PRIORITY) - {"thinking"}):
+            first_overlap = min(priority.index("sad"), priority.index("angry"))
+            priority.insert(first_overlap, "thinking")
         if len(priority) == len(DEFAULT_PRIORITY) and set(priority) == set(DEFAULT_PRIORITY):
             values["priority"] = tuple(priority)
     values["baseline"] = {

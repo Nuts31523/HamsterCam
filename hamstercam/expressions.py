@@ -90,6 +90,16 @@ class ExpressionTracker:
         width = raw("mouthWidth", 0.0) - baseline.get("mouthWidth", 0.37)
         smile = max(0.0, smile + 0.35 * max(0.0, width))
 
+        # Match both eyes moving in the same direction to distinguish a glance
+        # from convergence, which raises both inward coefficients.
+        side_gaze = max(
+            min(score("eyeLookInRight"), score("eyeLookOutLeft")),
+            min(score("eyeLookInLeft"), score("eyeLookOutRight")),
+        )
+        down_left, down_right = raw("eyeLookDownLeft", 0.0), raw("eyeLookDownRight", 0.0)
+        up_left, up_right = raw("eyeLookUpLeft", 0.0), raw("eyeLookUpRight", 0.0)
+        downward_gaze = (down_left + down_right - up_left - up_right) / 2
+
         threshold_scale = 1.24 - settings.sensitivity * 0.0048
 
         def at_least(name: str, value: float, threshold: float) -> bool:
@@ -103,6 +113,14 @@ class ExpressionTracker:
             self.closed_since = None
         sleepy = self.closed_since is not None and now - self.closed_since >= 1.1
 
+        lip_threshold = max(0.038, baseline.get("lipDownturn", 0.0) + 0.016)
+        pout = (
+            smile < 0.18 and jaw_open < 0.13 and raw("aperture", 0.0) < 0.08
+            and at_least("sad", raw("lipDownturn", 0.0), lip_threshold)
+            and (score("mouthShrugLower") >= 0.16 or downturn >= 0.08)
+        )
+        sad_pout = pout and (brow_down >= 0.16 or inner_brow >= 0.12 or side_gaze >= 0.48)
+
         matches = {
             "laughing": at_least("laughing", smile, 0.43)
             and (jaw_open >= 0.25 or aperture >= 0.22)
@@ -112,13 +130,17 @@ class ExpressionTracker:
             "sleepy": sleepy,
             "surprised": at_least("surprised", jaw, 0.39) and smile < 0.35
             and (eye_wide >= 0.10 or inner_brow >= 0.13 or jaw >= 0.53),
+            "thinking": pout and at_least("thinking", side_gaze, 0.53)
+            and at_least("thinking", downward_gaze, 0.065)
+            and raw("irisHeight", 0.0) < 0.088
+            and (brow_down >= 0.12 or outer_brow >= 0.10) and not eyes_closed,
             "angry": at_least("angry", brow_down, 0.31) and smile < 0.29
-            and (inner_brow < 0.28 or brow_down > inner_brow),
+            and (inner_brow < 0.28 or brow_down > inner_brow) and not sad_pout,
             "suspicious": at_least("suspicious", outer_brow, 0.27) and jaw < 0.31
             and abs(face.yaw) < 25,
             "smirk": at_least("smirk", asymmetry, 0.23) and jaw < 0.27
             and min(left, right) < 0.28 and abs(face.yaw) < 25,
             "happy": at_least("happy", smile, 0.31),
-            "sad": at_least("sad", downturn, 0.19) and inner_brow > 0.17 and smile < 0.24,
+            "sad": sad_pout or (at_least("sad", downturn, 0.19) and inner_brow > 0.17 and smile < 0.24),
         }
         return next((name for name in settings.priority if matches[name]), "neutral")

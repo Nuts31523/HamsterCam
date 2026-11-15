@@ -3,13 +3,16 @@ import sys
 
 
 def main() -> int:
+    from PySide6.QtGui import QIcon
     from PySide6.QtWidgets import QApplication
 
+    from hamstercam.settings import ROOT
     from hamstercam.ui_style import STYLESHEET
     from hamstercam.window import Window
 
     app = QApplication(sys.argv)
     app.setApplicationName("HamsterCam")
+    app.setWindowIcon(QIcon(str(ROOT / "assets" / "hamstercam.ico")))
     app.setStyle("Fusion")
     app.setStyleSheet(STYLESHEET)
     window = Window()

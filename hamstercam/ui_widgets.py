@@ -2,7 +2,7 @@ from collections.abc import Mapping
 
 from PIL import Image
 from PySide6.QtCore import QRect, QSize, Qt
-from PySide6.QtGui import QColor, QIcon, QImage, QPainter, QPen, QPixmap
+from PySide6.QtGui import QColor, QImage, QPainter
 from PySide6.QtWidgets import QComboBox, QFrame, QLabel, QSizePolicy, QWidget
 
 
@@ -38,25 +38,6 @@ def qimage(image: Image.Image) -> QImage:
     rgba = image.convert("RGBA")
     return QImage(rgba.tobytes(), rgba.width, rgba.height,
                   rgba.width * 4, QImage.Format.Format_RGBA8888).copy()
-
-
-def app_icon() -> QIcon:
-    pixmap = QPixmap(64, 64)
-    pixmap.fill(Qt.GlobalColor.transparent)
-    painter = QPainter(pixmap)
-    painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-    painter.setPen(Qt.PenStyle.NoPen)
-    painter.setBrush(QColor("#bda0ff"))
-    painter.drawRoundedRect(1, 1, 62, 62, 17, 17)
-    pen = QPen(QColor("#281a43"), 4)
-    pen.setCapStyle(Qt.PenCapStyle.RoundCap)
-    painter.setPen(pen)
-    for x, y, sx, sy in ((15, 15, 1, 1), (49, 15, -1, 1), (15, 49, 1, -1), (49, 49, -1, -1)):
-        painter.drawLine(x, y, x + sx * 8, y)
-        painter.drawLine(x, y, x, y + sy * 8)
-    painter.drawEllipse(25, 25, 14, 14)
-    painter.end()
-    return QIcon(pixmap)
 
 
 class Preview(QWidget):

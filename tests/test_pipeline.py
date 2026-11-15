@@ -1,4 +1,5 @@
 from dataclasses import replace
+import json
 from pathlib import Path
 from tempfile import TemporaryDirectory
 import time
@@ -13,7 +14,7 @@ from hamstercam.camera import CameraFrame, Device
 from hamstercam.expressions import Expression, ExpressionTracker, Face
 from hamstercam.pipeline import Pipeline
 from hamstercam.render import Renderer
-from hamstercam.settings import Settings, load_settings, save_settings
+from hamstercam.settings import DEFAULT_PRIORITY, Settings, load_settings, save_settings
 
 
 class ExpressionsTest(unittest.TestCase):
@@ -48,6 +49,29 @@ class ExpressionsTest(unittest.TestCase):
         self.assertEqual(tracker.update(eyes, 1.3, settings).name, "neutral")
         self.assertEqual(tracker.update(eyes, 2.5, settings).name, "sleepy")
 
+    def test_pout_and_gaze_distinguish_sad_and_thinking(self):
+        pout = {
+            "lipDownturn": .065, "mouthShrugLower": .36, "aperture": .012,
+            "browDownLeft": .42, "browDownRight": .36,
+        }
+        glance = {"eyeLookInRight": .87, "eyeLookOutLeft": .89}
+        down = {"eyeLookDownLeft": .22, "eyeLookDownRight": .18}
+        up = {"eyeLookUpLeft": .16, "eyeLookUpRight": .13}
+        opposite_glance = {"eyeLookInLeft": .87, "eyeLookOutRight": .89}
+        test_cases = (
+            ("sad", pout | glance | up),
+            ("thinking", pout | glance | down),
+            ("thinking", pout | opposite_glance | down),
+            ("sad", pout | glance | down | {"irisHeight": .102}),
+            ("sad", pout | {"eyeLookInLeft": .9, "eyeLookInRight": .9} | down),
+            ("neutral", glance | down),
+            ("angry", pout | glance | down | {"lipDownturn": .01}),
+        )
+        settings = Settings(hold_ms=0, baseline={"lipDownturn": .027})
+        for expected, features in test_cases:
+            with self.subTest(expected=expected, features=features):
+                self.assertEqual(ExpressionTracker().update(Face(features), 1, settings).name, expected)
+
 
 class AssetsTest(unittest.TestCase):
     def test_import_preserves_png_and_roundtrips_settings(self):
@@ -66,6 +90,15 @@ class AssetsTest(unittest.TestCase):
             settings = Settings(height=1080, baseline={"jawOpen": .026})
             save_settings(settings, root / "settings.json")
             self.assertEqual(load_settings(root / "settings.json"), settings)
+
+    def test_existing_expression_priority_is_preserved(self):
+        previous = [name for name in reversed(DEFAULT_PRIORITY) if name != "thinking"]
+        with TemporaryDirectory() as directory:
+            path = Path(directory) / "settings.json"
+            path.write_text(json.dumps({"priority": previous, "manual_expression": "sleepy"}), encoding="utf-8")
+            settings = load_settings(path)
+        self.assertEqual(settings.priority, ("thinking", *previous))
+        self.assertEqual(settings.manual_expression, "sleepy")
 
     def test_transparency_fade_and_resolution(self):
         pack = AssetPack({

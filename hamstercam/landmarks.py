@@ -41,9 +41,21 @@ class Landmarker(AbstractContextManager):
             return math.hypot((points[a].x - points[b].x) * width,
                               (points[a].y - points[b].y) * height)
 
+        def below_line(a: int, b: int, c: int, d: int) -> float:
+            # Measure the midpoint of c and d relative to the line from a to b.
+            left, right, first, second = (points[index] for index in (a, b, c, d))
+            axis_x, axis_y = (right.x - left.x) * width, (right.y - left.y) * height
+            offset_x = (first.x + second.x - left.x - right.x) * width / 2
+            offset_y = (first.y + second.y - left.y - right.y) * height / 2
+            return (axis_x * offset_y - axis_y * offset_x) / max(axis_x**2 + axis_y**2, 1)
+
         face_width = max(distance(234, 454), 1)
-        features["aperture"] = distance(13, 14) / max(distance(61, 291), 1)
-        features["mouthWidth"] = distance(61, 291) / face_width
+        mouth_width = max(distance(61, 291), 1)
+        features["aperture"] = distance(13, 14) / mouth_width
+        features["mouthWidth"] = mouth_width / face_width
+        features["lipDownturn"] = max(0.0, -below_line(61, 291, 13, 14))
+        if len(points) > 473:
+            features["irisHeight"] = -(below_line(33, 133, 468, 468) + below_line(362, 263, 473, 473)) / 2
 
         roll = yaw = pitch = 0.0
         if result.facial_transformation_matrixes:
